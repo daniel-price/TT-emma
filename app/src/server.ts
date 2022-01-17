@@ -1,11 +1,5 @@
-import express from "express";
+import app from "./app";
 import env from "./env";
-
-const app = express();
-
-app.route("/").get(async (_req, res) => {
-  res.send({});
-});
 
 app.listen(env.NODE_LOCAL_PORT, () => {
   console.log(
