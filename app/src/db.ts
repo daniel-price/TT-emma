@@ -35,7 +35,7 @@ export async function retrieveUserRankings(
   ]);
 
   const [rows] = await getConnection().execute<IRankingResult[]>(
-    ` SELECT m.display_name AS name, r.row_num / r.num_users_for_merchant AS ranking
+    `SELECT m.display_name AS name, ROUND(r.row_num * 100/ r.num_users_for_merchant, 1) AS ranking
 FROM T_RankingPerMerchant r, Merchants m
 WHERE r.user_id = ? AND m.id = r.merchant_id;`,
     [userUuid]
@@ -82,4 +82,44 @@ async function retryDroppedConnection(dbFn: () => Promise<void>) {
 
 export function closeConnection() {
   getConnection().end();
+}
+
+export async function saveMerchant(id: number, displayName: string) {
+  await getConnection().execute(`INSERT INTO Merchants VALUES(?,?,?,?)`, [
+    id,
+    displayName,
+    "",
+    "",
+  ]);
+}
+
+export async function saveTransaction(
+  id: number,
+  userId: number,
+  date: string,
+  amount: number,
+  merchantId: number
+) {
+  await getConnection().execute(
+    `INSERT INTO Transactions VALUES(?,?,?,?,?,?)`,
+    [id, userId, date, amount, "", merchantId]
+  );
+}
+
+export async function saveUser(
+  id: number,
+  firstName: string,
+  lastName: string
+) {
+  await getConnection().execute(`INSERT INTO Users VALUES(?,?,?)`, [
+    id,
+    firstName,
+    lastName,
+  ]);
+}
+
+export async function clearTables() {
+  await getConnection().execute(`DELETE FROM Transactions`);
+  await getConnection().execute(`DELETE FROM Merchants`);
+  await getConnection().execute(`DELETE FROM Users`);
 }
