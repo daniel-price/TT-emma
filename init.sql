@@ -33,6 +33,52 @@ CREATE TABLE `Transactions` (
   CONSTRAINT `Users_Id` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci//
 
+DROP PROCEDURE IF EXISTS emma.GetRankings//
+
+CREATE PROCEDURE GetRankings(
+  IN userId INT,
+  IN fromDate DATETIME,
+  IN toDate DATETIME
+)
+BEGIN
+DROP TABLE IF EXISTS T_MerchantIdsForUser;
+CREATE TEMPORARY TABLE T_MerchantIdsForUser
+SELECT DISTINCT(merchant_id)
+FROM Transactions
+WHERE
+	user_id = userId
+	AND date >= fromDate
+	AND date < toDate;
+
+DROP TABLE IF EXISTS T_AllTransactionsForMerchants;
+CREATE TEMPORARY TABLE T_AllTransactionsForMerchants
+SELECT t.merchant_id, t.user_id, t.amount
+FROM Transactions t, T_MerchantIdsForUser ids
+WHERE
+	t.merchant_id = ids.merchant_id
+	AND date >= fromDate
+	AND date < toDate;
+
+DROP TABLE IF EXISTS T_RankingPerMerchant;
+CREATE TEMPORARY TABLE T_RankingPerMerchant
+SELECT
+	ROW_NUMBER() OVER (
+		PARTITION BY merchant_id
+		ORDER BY SUM(amount) DESC
+	) row_num,
+	COUNT(1) OVER(PARTITION BY merchant_id) num_users_for_merchant,
+	user_id,
+	merchant_id,
+	SUM(amount) amount_sum
+FROM T_AllTransactionsForMerchants
+GROUP BY
+	merchant_id,
+	user_id
+ORDER BY
+	merchant_id,
+	SUM(amount) DESC;
+END //
+
 DROP PROCEDURE IF EXISTS CreateUsers//
 
 CREATE PROCEDURE CreateUsers(

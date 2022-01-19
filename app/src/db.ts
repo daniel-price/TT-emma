@@ -17,6 +17,35 @@ function getConnection() {
   }
   return connection;
 }
+
+interface IRankingResult extends RowDataPacket {
+  name: string;
+  ranking: number;
+}
+
+export async function retrieveUserRankings(
+  userUuid: string,
+  fromDate: string,
+  toDate: string
+) {
+  await getConnection().execute(`CALL GetRankings(?,?,?)`, [
+    userUuid,
+    fromDate,
+    toDate,
+  ]);
+
+  const [rows] = await getConnection().execute<IRankingResult[]>(
+    ` SELECT m.display_name AS name, r.row_num / r.num_users_for_merchant AS ranking
+FROM T_RankingPerMerchant r, Merchants m
+WHERE r.user_id = ? AND m.id = r.merchant_id;`,
+    [userUuid]
+  );
+
+  return rows.map(({ name, ranking }) => {
+    return { name, ranking };
+  });
+}
+
 export async function addMerchants(numOfMerchants: number) {
   await retryDroppedConnection(async () => {
     await getConnection().execute(`CALL CreateMerchants(1, ${numOfMerchants})`);
